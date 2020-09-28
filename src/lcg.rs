@@ -72,36 +72,40 @@ pub fn get_state(m: u128, p: u128, origin: u128, iterations: u128) -> u128 {
     state
 }
 
-#[test]
-pub fn run_tests() {
+#[cfg(test)] mod tests {
+    use super::*;
+    use super::super::*;
 
-    let mut r: u128 = 0;
-    let mut rnd = || -> u128 { r = r.wrapping_mul(super::LCG_M1).wrapping_add(0xffff); r };
+    #[test] pub fn run_tests() {
 
-    for _ in 0 .. 1<<12 {
+        let mut r: u128 = 0;
+        let mut rnd = || -> u128 { r = r.wrapping_mul(LCG_M1).wrapping_add(0xffff); r };
 
-        let m = match rnd() % 3 { 0 => super::LCG_M1, 1 => super::LCG_M2, _ => super::LCG_M3 };
-        let p = rnd() | 1;
-        let origin = rnd();
+        for _ in 0 .. 1<<12 {
 
-        assert_eq!(origin.wrapping_mul(m).wrapping_add(p), get_state(m, p, origin, 1));
-        assert_eq!(1, get_iterations(m, p, origin, origin.wrapping_mul(m).wrapping_add(p)));
+            let m = match rnd() % 3 { 0 => LCG_M1, 1 => LCG_M2, _ => LCG_M3 };
+            let p = rnd() | 1;
+            let origin = rnd();
 
-        // Run some consistency tests.
-        let state = rnd();
-        let n = get_iterations(m, p, origin, state);
-        assert_eq!(state, get_state(m, p, origin, n));
+            assert_eq!(origin.wrapping_mul(m).wrapping_add(p), get_state(m, p, origin, 1));
+            assert_eq!(1, get_iterations(m, p, origin, origin.wrapping_mul(m).wrapping_add(p)));
 
-        let (m_total, p_total) = get_jump(m, p, n);
-        assert_eq!(origin.wrapping_mul(m_total).wrapping_add(p_total), state);
+            // Run some consistency tests.
+            let state = rnd();
+            let n = get_iterations(m, p, origin, state);
+            assert_eq!(state, get_state(m, p, origin, n));
 
-        let n = rnd();
-        let state = get_state(m, p, origin, n);
-        assert_eq!(n, get_iterations(m, p, origin, state));
+            let (m_total, p_total) = get_jump(m, p, n);
+            assert_eq!(origin.wrapping_mul(m_total).wrapping_add(p_total), state);
 
-        // Get h <= n.
-        let h = n & rnd();
-        let state_h = get_state(m, p, origin, h);
-        assert_eq!(n - h, get_iterations(m, p, state_h, state));
+            let n = rnd();
+            let state = get_state(m, p, origin, n);
+            assert_eq!(n, get_iterations(m, p, origin, state));
+
+            // Get h <= n.
+            let h = n & rnd();
+            let state_h = get_state(m, p, origin, h);
+            assert_eq!(n - h, get_iterations(m, p, state_h, state));
+        }
     }
 }

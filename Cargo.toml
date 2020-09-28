@@ -1,11 +1,19 @@
 [package]
 name = "rand_krull"
 version = "0.1.0"
-authors = ["SamiPerttu <Sami.Perttu@gmail.com>"]
+authors = ["Sami Perttu <Sami.Perttu@gmail.com>"]
 edition = "2018"
+description = "Krull64 non-cryptographic RNG (random number generator)"
+license = "MIT"
+categories = ["algorithms", "no-std"]
+keywords = ["random", "RNG"]
+repository = "https://github.com/SamiPerttu/rand_krull"
+readme = "README.md"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
 
 [dependencies]
+rand_core = "0.5"
 wrapping_arithmetic = "0.1.0"
-rand_core = "0.5.1"
+serde = { version = "1.0", features = ["derive"], optional = true }
