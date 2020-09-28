@@ -2,7 +2,7 @@
 
 ## Sample with Confidence
 
-- High quality, non-cryptographic, medium-fast RNG.
+- High quality, non-cryptographic, medium-fast [RNG](https://en.wikipedia.org/wiki/Random_number_generation).
 - 64-bit output, 256-bit state.
 - 2\*\*128 streams of period 2\*\*128 supporting random access.
 - Streams are equidistributed with each 64-bit output appearing 2\*\*64 times.
