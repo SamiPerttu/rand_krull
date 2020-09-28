@@ -11,7 +11,7 @@
 - Technically, it is a [PCG](http://www.pcg-random.org/)
   with a strong output hash designed to
   decorrelate streams and make use of the full state space.
-- No unsafe code and no ´std´ required.
+- No unsafe code and no `std` required.
 
 Krull64 is intended as a non-cryptographic workhorse RNG
 suitable for simulations and procedural content generation
