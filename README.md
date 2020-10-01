@@ -1,23 +1,21 @@
-# [Krull64 Random Number Generator](https://github.com/SamiPerttu/rand_krull)
+# [Krull64/65 Random Number Generators](https://github.com/SamiPerttu/rand_krull)
 
 ## Sample with Confidence
 
-- High quality, non-cryptographic, medium-fast [RNG](https://en.wikipedia.org/wiki/Random_number_generation).
-- 64-bit output, 256-bit state.
-- 2\*\*128 streams of period 2\*\*128 supporting random access.
-- Streams are equidistributed with each 64-bit output appearing 2\*\*64 times.
-- Streams are pairwise independent and there are no bad states.
-- Trivially seedable from any data up to 128 bits.
-- Technically, it is a [PCG](http://www.pcg-random.org/)
-  with a strong output hash designed to
-  decorrelate streams and make use of the full state space.
+- High quality, non-cryptographic, medium-fast [RNGs](https://en.wikipedia.org/wiki/Random_number_generation).
+- "Trivially strong" designs combining [LCGs](https://en.wikipedia.org/wiki/Linear_congruential_generator) with a strong output hash.
+- 64-bit output, 192-bit (Krull64) or 256-bit (Krull65) state.
+- 2\*\*64 (Krull64) or 2\*\*128 (Krull65) pairwise independent streams of period 2\*\*128.
+- Streams are equidistributed with each 64-bit number appearing 2\*\*64 times.
+- Full state space with no bad states and no bad seeds.
+- Random access inside streams.
 - No unsafe code and no `std` required.
 
-Krull64 is intended as a non-cryptographic workhorse RNG
+Krull64/65 are intended as non-cryptographic workhorse RNGs
 suitable for simulations and procedural content generation
-that is solid, easy to use, and has a full feature set.
+that are solid, easy to use, and have a full feature set.
 
-Krull64 will be frozen after a period of testing if no issues are found.
+Krull64/65 will be frozen after a period of testing if no issues are found.
 
 ## Crate
 
