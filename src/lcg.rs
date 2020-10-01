@@ -1,29 +1,62 @@
 use wrapping_arithmetic::wrappit;
+use core::ops::{Add, Sub, Mul, Not, BitAnd, BitOr, BitXor, Shl, Shr};
 
 // This module contains utility functions for working with
 // LCGs (linear congruential generators).
+
+// Define an ad hoc trait to make our functions generic.
+pub trait Int: Copy + Eq + PartialEq + Ord + PartialOrd
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Not<Output = Self>
+    + BitAnd<Output = Self>
+    + BitOr<Output = Self>
+    + BitXor<Output = Self>
+    + Shl<usize, Output = Self>
+    + Shr<usize, Output = Self>
+{
+    fn zero() -> Self;
+    fn one() -> Self;
+    fn wrapping_add(self, other: Self) -> Self;
+    fn wrapping_sub(self, other: Self) -> Self;
+    fn wrapping_mul(self, other: Self) -> Self;
+}
+
+macro_rules! impl_int {
+    ( $($t:ty),* ) => {
+    $( impl Int for $t {
+        #[inline] fn zero() -> Self { 0 }
+        #[inline] fn one() -> Self { 1 }
+        #[inline] fn wrapping_add(self, other: Self) -> Self { <$t>::wrapping_add(self, other) }
+        #[inline] fn wrapping_sub(self, other: Self) -> Self { <$t>::wrapping_sub(self, other) }
+        #[inline] fn wrapping_mul(self, other: Self) -> Self { <$t>::wrapping_mul(self, other) }
+    }) *
+    }
+}
+impl_int! { u8, u16, u32, u64, u128 }
 
 /// LCG iteration is state <- state * m + p.
 /// Returns the (m, p) pair that iterates by n steps at once.
 /// Assumes (m, p) is full period.
 #[wrappit]
-pub fn get_jump(m: u128, p: u128, n: u128) -> (u128, u128) {
+pub fn get_jump<T: Int>(m: T, p: T, n: T) -> (T, T) {
     // Algorithm from Brown, F. B., "Random Number Generation with Arbitrary Stride",
     // Transactions of the American Nuclear Society, 1994.
     let mut unit_m = m;
     let mut unit_p = p;
-    let mut jump_m: u128 = 1;
-    let mut jump_p: u128 = 0;
+    let mut jump_m = T::one();
+    let mut jump_p = T::zero();
     let mut delta = n;
 
-    while delta > 0 {
-        if delta & 1 == 1 {
+    while delta > T::zero() {
+        if delta & T::one() == T::one() {
             jump_m = jump_m * unit_m;
             jump_p = jump_p * unit_m + unit_p;
         }
-        unit_p = (unit_m + 1) * unit_p;
-        unit_m *= unit_m;
-        delta >>= 1;
+        unit_p = (unit_m + T::one()) * unit_p;
+        unit_m = unit_m * unit_m;
+        delta = delta >> 1;
     }
     (jump_m, jump_p)
 }
@@ -32,11 +65,11 @@ pub fn get_jump(m: u128, p: u128, n: u128) -> (u128, u128) {
 /// Returns the number of iterations between origin state and the given state.
 /// Assumes (m, p) is full period.
 #[wrappit]
-pub fn get_iterations(m: u128, p: u128, origin: u128, state: u128) -> u128 {
+pub fn get_iterations<T: Int>(m: T, p: T, origin: T, state: T) -> T {
     let mut jump_m = m;
     let mut jump_p = p;
-    let mut ordinal: u128 = 0;
-    let mut bit: u128 = 1;
+    let mut ordinal = T::zero();
+    let mut bit = T::one();
     let mut address = origin;
 
     while address != state {
@@ -44,9 +77,9 @@ pub fn get_iterations(m: u128, p: u128, origin: u128, state: u128) -> u128 {
             address = address * jump_m + jump_p;
             ordinal = ordinal + bit;
         }
-        jump_p = (jump_m + 1) * jump_p;
+        jump_p = (jump_m + T::one()) * jump_p;
         jump_m *= jump_m;
-        bit <<= 1;
+        bit = bit << 1;
     }
     ordinal
 }
@@ -55,19 +88,19 @@ pub fn get_iterations(m: u128, p: u128, origin: u128, state: u128) -> u128 {
 /// Returns state after the specified number of iterations from the origin state.
 /// Assumes (m, p) is full period.
 #[wrappit]
-pub fn get_state(m: u128, p: u128, origin: u128, iterations: u128) -> u128 {
+pub fn get_state<T: Int>(m: T, p: T, origin: T, iterations: T) -> T {
     let mut jump_m = m;
     let mut jump_p = p;
     let mut state = origin;
     let mut ordinal = iterations;
 
-    while ordinal > 0 {
-        if ordinal & 1 == 1 {
+    while ordinal > T::zero() {
+        if ordinal & T::one() == T::one() {
             state = state * jump_m + jump_p;
         }
-        jump_p = (jump_m + 1) * jump_p;
+        jump_p = (jump_m + T::one()) * jump_p;
         jump_m *= jump_m;
-        ordinal >>= 1;
+        ordinal = ordinal >> 1;
     }
     state
 }
@@ -79,11 +112,11 @@ pub fn get_state(m: u128, p: u128, origin: u128, iterations: u128) -> u128 {
     #[test] pub fn run_tests() {
 
         let mut r: u128 = 0;
-        let mut rnd = || -> u128 { r = r.wrapping_mul(LCG_M1).wrapping_add(0xffff); r };
+        let mut rnd = || -> u128 { r = r.wrapping_mul(LCG_M128_1).wrapping_add(0xffff); r };
 
         for _ in 0 .. 1<<12 {
 
-            let m = match rnd() % 3 { 0 => LCG_M1, 1 => LCG_M2, _ => LCG_M3 };
+            let m = match rnd() % 3 { 0 => LCG_M128_1, 1 => LCG_M128_2, _ => LCG_M128_3 };
             let p = rnd() | 1;
             let origin = rnd();
 
