@@ -4,10 +4,11 @@ use wrapping_arithmetic::wrappit;
 // Krull64 features
 // -"trivially strong" design by Sebastiano Vigna
 // -64-bit output, 192-bit state
-// -uses the full 192-bit state space with no bad states and no bad seeds
-// -2**64 pairwise independent streams of length 2**128
+// -full 192-bit state space with no bad states and no bad seeds
+// -2**64 pairwise and sequentially independent streams of length 2**128
 // -streams are equidistributed with each 64-bit number appearing 2**64 times
 // -random access inside streams
+// -generation takes approximately 3.0 us (where PCG-128 is 2.4 us and Krull65 is 4.6 us)
 
 /// Krull64 non-cryptographic RNG. 64-bit output, 192-bit state.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -108,17 +109,44 @@ impl Krull64 {
         self.get()
     }
 
+    /// 128-bit version of next() for benchmarking.
+    #[wrappit] #[inline] pub fn next_128(&mut self) -> u64 {
+        let lcg = self.lcg_128() * self.multiplier_128() + self.increment_128();
+        self.lcg0 = lcg as u64;
+        self.lcg1 = (lcg >> 64) as u64;
+        self.get()
+    }
+
     /// Creates a new Krull64 RNG.
     /// Stream and position are set to 0.
     pub fn new() -> Self {
         Krull64 { lcg0: origin_0(0), lcg1: 0, stream: 0 }
     }
 
-    /// Creates a new Krull64 RNG.
+    /// Creates a new Krull64 RNG from a 32-bit seed.
     /// Stream is set to the given seed and position is set to 0.
     /// All seeds work equally well.
-    pub fn from_seed(seed: u64) -> Self {
+    pub fn from_32(seed: u32) -> Self {
+        Krull64::from_64(seed as u64)
+    }
+
+    /// Creates a new Krull64 RNG from a 64-bit seed.
+    /// Stream is set to the given seed and position is set to 0.
+    /// All seeds work equally well.
+    pub fn from_64(seed: u64) -> Self {
         Krull64 { lcg0: origin_0(seed), lcg1: 0, stream: seed }
+    }
+
+    /// Creates a new Krull64 RNG from a 128-bit seed.
+    /// Each seed accesses a unique sequence of length 2**64.
+    /// All seeds work equally well.
+    /// Sets stream to a XOR of the high and low bits of seed
+    /// to decorrelate nearby seeds in both arguments.
+    /// Sets high bits of position from low bits of seed.
+    pub fn from_128(seed: u128) -> Self {
+        let mut krull = Krull64::from_64(((seed >> 64) ^ seed) as u64);
+        krull.set_position((seed as u128) << 64);
+        krull
     }
 
     /// Jumps forward (if steps > 0) or backward (if steps < 0) or does nothing (if steps = 0).
@@ -190,14 +218,13 @@ impl RngCore for Krull64 {
 }
 
 impl SeedableRng for Krull64 {
-    type Seed = [u8; 8];
-
+    type Seed = [u8; 16];
 
     /// Creates a new Krull64 RNG from a seed.
     /// All seeds work equally well.
     fn from_seed(seed: Self::Seed) -> Self {
         // Always use Little-Endian.
-        Krull64::from_seed(u64::from_le_bytes(seed))
+        Krull64::from_128(u128::from_le_bytes(seed))
     }
 }
 
@@ -218,7 +245,7 @@ impl SeedableRng for Krull64 {
             krull1.set_stream(seed);
             assert_eq!(seed, krull1.stream());
             assert_eq!(0, krull1.position());
-            let mut krull2 = Krull64::from_seed(seed);
+            let mut krull2 = Krull64::from_64(seed);
             assert_eq!(seed, krull2.stream());
             assert_eq!(0, krull2.position());
         

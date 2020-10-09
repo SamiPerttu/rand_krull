@@ -3,13 +3,14 @@ use wrapping_arithmetic::wrappit;
 
 // Krull65 features
 // -"trivially strong" design by Sami Perttu
-// -64-bit output, 256-bit state
-// -uses the full 256-bit state space with no bad states and no bad seeds
-// -2**128 pairwise independent streams of length 2**128
+// -64-bit output, 256-bit state, 320-bit footprint
+// -linear 256-bit state space with no bad states and no bad seeds
+// -2**128 pairwise and sequentially independent streams of length 2**128
 // -streams are equidistributed with each 64-bit number appearing 2**64 times
 // -random access inside streams
+// -generation takes approximately 4.6 us (where PCG-128 is 2.4 us and Krull64 is 3.0 us)
 
-/// Krull65 non-cryptographic RNG. 64-bit output, 256-bit state.
+/// Krull65 non-cryptographic RNG. 64-bit output, 320-bit footprint.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Eq, PartialEq)]
 pub struct Krull65 {
@@ -19,8 +20,10 @@ pub struct Krull65 {
     a1: u64,
     /// LCG B state, low 64 bits.
     b0: u64,
-    /// LCG b state, high 64 bits.
+    /// LCG B state, high 64 bits.
     b1: u64,
+    /// Stream number, high 64 bits.
+    c1: u64,
 }
 
 // As recommended, this Debug implementation does not expose internal state.
@@ -69,13 +72,11 @@ impl Krull65 {
     }
 
     #[inline] fn increment_a_128(&self) -> u128 {
-        // Pick a big constant that is odd.
-        super::LCG_M128_1
+        ((self.c1 as u128) << 1) ^ super::LCG_M128_1
     }
 
     #[inline] fn increment_b_128(&self) -> u128 {
-        // Pick a big constant that is odd.
-        super::LCG_M128_4
+        ((self.c1 as u128) << 1) ^ 1
     }
 
     #[inline] fn a_128(&self) -> u128 {
@@ -99,6 +100,7 @@ impl Krull65 {
     /// Advances to the next state.
     #[wrappit] #[inline] fn step(&mut self) {
         // We can get a widening 64-to-128-bit multiply by casting the arguments from 64 bits.
+        // 65-bit multiplies are ~0.5 ns faster than 128-bit.
         // We also add the increment in 128-bit to get the carry for free.
         let a = (self.a0 as u128) * (self.multiplier_a() as u128) + self.increment_a_128();
         self.a1 = ((a >> 64) as u64) + self.a1 * self.multiplier_a() + self.a0;
@@ -106,47 +108,51 @@ impl Krull65 {
         let b = (self.b0 as u128) * (self.multiplier_b() as u128) + self.increment_b_128();
         self.b1 = ((b >> 64) as u64) + self.b1 * self.multiplier_b() + self.b0;
         self.b0 = b as u64;
-
-        // Here's the stepping code for A in 128-bit math.
-        // let a = self.a_128() * self.multiplier_a_128() + self.increment_a_128();
-        // self.a1 = (a >> 64) as u64;
-        // self.a0 = a as u64;
     }
 
     /// Returns the current 64-bit output.
     #[wrappit] #[inline] fn get(&self) -> u64 {
         // Krull65 algorithm consists of two 128-bit LCGs advancing in synchrony.
-        // The LCGs A and B, which are always run with the same constants, realize
-        // two fixed sequences of length 2**128. The stream constant is chosen
-        // by positioning B against A.
-
+        // The LCGs A and B realize two cycles of length 2**128,
+        // with constants determined from high 64 bits of C, the stream.
+        // Low 64 bits of C are chosen by positioning B against A.
+        //
         // As our starting point, we take the XOR of some high quality bits from A and B.
-        // Choose high 64 bits from B and the next to highest 64 bits from A.
+        // Choose high 64 bits from B and A.
         // As we're mixing different bits of the LCGs together,
         // and the rest of the pipeline is bijective, this guarantees
         // equidistribution with each 64-bit output appearing 2**64 times in each stream.
-        let x = self.b1 ^ (self.a1 << 1) ^ (self.a0 >> 63);
+        //
+        let x = self.b1 ^ (self.a1 << 32) ^ (self.a1 >> 32);
 
-        // We can examine our chosen worst case of the user XORing two streams X and Y.
+        // The signal is already quite high quality here, as the minimum periodicity
+        // left in the bits is 2**96 samples.
+        //
+        // We can examine our chosen worst case of the user XORing two streams X and Y
+        // at the worst possible location with C being identical.
         // At this point in the pipeline, pairwise correlations between X and Y
         // can be measured easily, as they are just autocorrelations of B: A is identical.
         // So the sequence X XOR Y is the XOR of B with a lagged copy of itself.
-        // Autocorrelation of an LCG is indicated by the lowest differing bit.
-        // For instance, if streams X and Y share an identical lowest 32 bits,
-        // then statistical tests fail at 256 MB, but if they share 48 bits,
-        // then statistical tests fail at 2 MB already.
-        // Fortunately, there are only a vanishing fraction of pairwise streams
-        // where the output hash has to do significant work to remove the correlations.
+        //
+        // Fortunately, only in a vanishing fraction of cases does the output hash
+        // have to do significant work to remove the pairwise correlations.
+        // The level of correlation is indicated by the lowest differing bit in C.
         // In the next table we can see how hashing improves the result
         // with some statistical failures of X XOR Y investigated with PractRand.
-        // The output hash is intended to pass tests also as an indexed RNG.
         //
-        // Lowest differing bit    32     64     96     127
-        // ------------------------------------------------
-        // No hashing            256MB    1MB    1MB    1MB
-        // 1 round              >256GB    1GB    1MB    1MB
-        // 2 rounds                ?      ?    >32GB    1MB
-        // 3 rounds                ?      ?      ?    >64GB
+        // Identical bits       31     63     95     127
+        // ---------------------------------------------
+        // No hashing         256MB    1MB    1MB    1MB
+        // 1 round             >1TB   32GB    1MB    1MB
+        // 2 rounds             ?      ?    ~64TB    1MB
+        // 3 rounds             ?      ?      ?     >1TB
+        //
+        // We have cordoned off 64 bits of the theoretical 128-bit phase difference
+        // to avoid extreme correlations, leaving our worst case at 63 identical bits.
+        // At that level of correlation, we need a second round of hashing
+        // to purify streams pairwise. The output hash is intended to also
+        // pass tests as an indexed RNG.
+        //
         let x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9; // round 1
         let x = (x ^ (x >> 27)) * 0x94d049bb133111eb; // round 2
         let x = (x ^ (x >> 31)) * 0xd6e8feb86659fd93; // round 3
@@ -163,15 +169,45 @@ impl Krull65 {
     /// Creates a new Krull65 RNG.
     /// Stream and position are set to 0.
     pub fn new() -> Self {
-        Krull65 { a0: origin_a0(), a1: 0, b0: origin_b0(), b1: 0 }
+        Krull65 { a0: origin_a0(), a1: 0, b0: origin_b0(), b1: 0, c1: 0 }
     }
 
-    /// Creates a new Krull65 RNG.
+    /// Creates a new Krull65 RNG from a 32-bit seed.
     /// Stream is set to the given seed and position is set to 0.
     /// All seeds work equally well.
-    pub fn from_seed(seed: u128) -> Self {
+    pub fn from_32(seed: u32) -> Self {
+        let mut krull = Self::new();
+        krull.set_stream(seed as u128);
+        krull
+    }
+
+    /// Creates a new Krull65 RNG from a 64-bit seed.
+    /// Stream is set to the given seed and position is set to 0.
+    /// All seeds work equally well.
+    pub fn from_64(seed: u64) -> Self {
+        let mut krull = Self::new();
+        krull.set_stream(seed as u128);
+        krull
+    }
+
+    /// Creates a new Krull65 RNG from a 128-bit seed.
+    /// Stream is set to the given seed and position is set to 0.
+    /// All seeds work equally well.
+    pub fn from_128(seed: u128) -> Self {
         let mut krull = Self::new();
         krull.set_stream(seed);
+        krull
+    }
+
+    /// Creates a new Krull65 RNG from a 192-bit seed.
+    /// All seeds work equally well.
+    /// Each seed accesses a unique sequence of length 2**64.
+    /// Sets stream to (seed0 XOR seed1) to decorrelate nearby seeds in both arguments.
+    /// High bits of position are taken from seed1.
+    pub fn from_192(seed0: u128, seed1: u64) -> Self {
+        let mut krull = Self::new();
+        krull.set_stream(seed0 ^ (seed1 as u128));
+        krull.set_position((seed1 as u128) << 64);
         krull
     }
 
@@ -208,14 +244,17 @@ impl Krull65 {
     pub fn stream(&self) -> u128 {
         let a_n = self.position();
         let b_n = super::lcg::get_iterations(self.multiplier_b_128(), self.increment_b_128(), origin_b_128(), self.b_128());
-        // The stream is encoded as the phase difference (B - A).
-        b_n.wrapping_sub(a_n)
+        // Low bits of stream are encoded as the phase difference (B - A).
+        let delta = b_n.wrapping_sub(a_n) as u64;
+        (((delta ^ self.c1) as u128) << 64) | (delta as u128)
     }
 
     /// Sets stream and initializes position to 0.
     pub fn set_stream(&mut self, stream: u128) {
+        // This transformation enhances diversity of nearby streams.
+        self.c1 = (stream ^ (stream >> 64)) as u64;
         self.reset();
-        self.set_b_128(crate::lcg::get_state(self.multiplier_b_128(), self.increment_b_128(), origin_b_128(), stream));
+        self.set_b_128(crate::lcg::get_state(self.multiplier_b_128(), self.increment_b_128(), origin_b_128(), (stream as u64) as u128));
     }
 }
 
@@ -247,14 +286,17 @@ impl RngCore for Krull65 {
     }
 }
 
+use std::convert::TryInto;
+
 impl SeedableRng for Krull65 {
-    type Seed = [u8; 16];
+    type Seed = [u8; 24];
 
     /// Creates a new Krull65 RNG from a seed.
+    /// Each seed accesses a unique sequence of length 2**64.
     /// All seeds work equally well.
     fn from_seed(seed: Self::Seed) -> Self {
         // Always use Little-Endian.
-        Krull65::from_seed(u128::from_le_bytes(seed))
+        Krull65::from_192(u128::from_le_bytes(seed[0 .. 16].try_into().unwrap()), u64::from_le_bytes(seed[16 .. 24].try_into().unwrap()))
     }
 }
 
@@ -275,7 +317,7 @@ impl SeedableRng for Krull65 {
             krull1.set_stream(seed);
             assert_eq!(seed, krull1.stream());
             assert_eq!(0, krull1.position());
-            let mut krull2 = Krull65::from_seed(seed);
+            let mut krull2 = Krull65::from_128(seed);
             assert_eq!(seed, krull2.stream());
             assert_eq!(0, krull2.position());
         

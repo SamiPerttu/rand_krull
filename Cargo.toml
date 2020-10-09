@@ -1,9 +1,9 @@
 [package]
 name = "rand_krull"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Sami Perttu <Sami.Perttu@gmail.com>"]
 edition = "2018"
-description = "Krull64 non-cryptographic RNG (random number generator)"
+description = "Krull64/65 random number generators."
 license = "MIT"
 categories = ["algorithms", "no-std"]
 keywords = ["random", "RNG"]
@@ -17,3 +17,10 @@ default = []
 rand_core = "0.5"
 wrapping_arithmetic = "0.1.0"
 serde = { version = "1.0", features = ["derive"], optional = true }
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "benchmark"
+harness = false
