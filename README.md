@@ -3,13 +3,15 @@
 ## Sample with Confidence
 
 - High quality, non-cryptographic, medium-fast [RNGs](https://en.wikipedia.org/wiki/Random_number_generation).
-- "Trivially strong" designs combining [LCGs](https://en.wikipedia.org/wiki/Linear_congruential_generator) with a strong output hash.
+- Designed by Sebastiano Vigna (Krull64) / Sami Perttu (Krull65).
+- "Trivially strong" algorithms combining [LCGs](https://en.wikipedia.org/wiki/Linear_congruential_generator) with a strong output hash.
 - 64-bit output, 192-bit (Krull64) or 256-bit (Krull65) state.
 - 2\*\*64 (Krull64) or 2\*\*128 (Krull65) pairwise independent streams of period 2\*\*128.
 - Streams are equidistributed with each 64-bit number appearing 2\*\*64 times.
 - Full state space with no bad states and no bad seeds.
 - Random access inside streams.
 - No unsafe code and no `std` required.
+- LCGs are run economically with [65-bit multipliers](https://arxiv.org/abs/2001.05304) using 64-to-128-bit widening multiplies.
 
 Krull64/65 are intended as non-cryptographic workhorse RNGs
 suitable for simulations and procedural content generation
