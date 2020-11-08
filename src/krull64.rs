@@ -3,12 +3,12 @@ use wrapping_arithmetic::wrappit;
 
 // Krull64 features
 // -"trivially strong" design by Sebastiano Vigna
-// -64-bit output, 192-bit state
+// -64-bit output, 192-bit state and footprint
 // -full 192-bit state space with no bad states and no bad seeds
-// -2**64 pairwise and sequentially independent streams of length 2**128
+// -2**64 pairwise independent streams of length 2**128
 // -streams are equidistributed with each 64-bit number appearing 2**64 times
 // -random access inside streams
-// -generation takes approximately 3.0 us (where PCG-128 is 2.4 us and Krull65 is 4.6 us)
+// -generation takes approximately 3.0 ns (where PCG-128 is 2.4 ns and Krull65 is 4.6 ns)
 
 /// Krull64 non-cryptographic RNG. 64-bit output, 192-bit state.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

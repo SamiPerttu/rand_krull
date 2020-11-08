@@ -4,11 +4,11 @@ use wrapping_arithmetic::wrappit;
 // Krull65 features
 // -"trivially strong" design by Sami Perttu
 // -64-bit output, 256-bit state, 320-bit footprint
-// -linear 256-bit state space with no bad states and no bad seeds
-// -2**128 pairwise and sequentially independent streams of length 2**128
+// -full 256-bit state space with no bad states and no bad seeds
+// -2**128 pairwise independent streams of length 2**128
 // -streams are equidistributed with each 64-bit number appearing 2**64 times
 // -random access inside streams
-// -generation takes approximately 4.6 us (where PCG-128 is 2.4 us and Krull64 is 3.0 us)
+// -generation takes approximately 4.6 ns (where PCG-128 is 2.4 ns and Krull64 is 3.0 ns)
 
 /// Krull65 non-cryptographic RNG. 64-bit output, 320-bit footprint.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -100,7 +100,7 @@ impl Krull65 {
     /// Advances to the next state.
     #[wrappit] #[inline] fn step(&mut self) {
         // We can get a widening 64-to-128-bit multiply by casting the arguments from 64 bits.
-        // 65-bit multiplies are ~0.5 ns faster than 128-bit.
+        // 65-bit multiplies are ~0.5 ns faster here than 128-bit.
         // We also add the increment in 128-bit to get the carry for free.
         let a = (self.a0 as u128) * (self.multiplier_a() as u128) + self.increment_a_128();
         self.a1 = ((a >> 64) as u64) + self.a1 * self.multiplier_a() + self.a0;
@@ -286,7 +286,7 @@ impl RngCore for Krull65 {
     }
 }
 
-use std::convert::TryInto;
+use core::convert::TryInto;
 
 impl SeedableRng for Krull65 {
     type Seed = [u8; 24];
