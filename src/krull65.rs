@@ -102,10 +102,10 @@ impl Krull65 {
         // We can get a widening 64-to-128-bit multiply by casting the arguments from 64 bits.
         // 65-bit multiplies are ~0.5 ns faster here than 128-bit.
         // We also add the increment in 128-bit to get the carry for free.
-        let a = (self.a0 as u128) * (self.multiplier_a() as u128) + self.increment_a_128();
+        let a = (self.a0 as u128) * self.multiplier_a() as u128 + self.increment_a_128();
         self.a1 = ((a >> 64) as u64) + self.a1 * self.multiplier_a() + self.a0;
         self.a0 = a as u64;
-        let b = (self.b0 as u128) * (self.multiplier_b() as u128) + self.increment_b_128();
+        let b = (self.b0 as u128) * self.multiplier_b() as u128 + self.increment_b_128();
         self.b1 = ((b >> 64) as u64) + self.b1 * self.multiplier_b() + self.b0;
         self.b0 = b as u64;
     }

@@ -80,7 +80,7 @@ impl Krull64 {
     #[wrappit] #[inline] fn step(&mut self) {
         // We can get a widening 64-to-128-bit multiply by casting the arguments from 64 bits.
         // We also add the increment in 128-bit to get the carry for free.
-        let lcg = (self.lcg0 as u128) * (self.multiplier() as u128) + self.increment_128();
+        let lcg = (self.lcg0 as u128) * self.multiplier() as u128 + self.increment_128();
         self.lcg1 = ((lcg >> 64) as u64) + self.lcg1 * self.multiplier() + self.lcg0;
         self.lcg0 = lcg as u64;
     }
