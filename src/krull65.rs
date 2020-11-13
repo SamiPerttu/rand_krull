@@ -51,10 +51,6 @@ impl core::fmt::Debug for Krull65 {
 
 impl Krull65 {
 
-    pub fn print(&self) {
-        println!("A {:16x}.. B {:16x}.. output {:16x} position {}", self.a1, self.b1, self.get(), self.position());
-    }
-
     #[inline] fn multiplier_a(&self) -> u64 {
         super::LCG_M65_1 as u64
     }
