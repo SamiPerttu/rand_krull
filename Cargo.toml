@@ -14,7 +14,7 @@ readme = "README.md"
 default = []
 
 [dependencies]
-rand_core = "0.5"
+rand_core = "0.6"
 wrapping_arithmetic = "0.1.0"
 serde = { version = "1.0", features = ["derive"], optional = true }
 

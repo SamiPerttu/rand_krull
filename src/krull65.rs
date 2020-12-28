@@ -1,5 +1,6 @@
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use wrapping_arithmetic::wrappit;
-#[cfg(feature = "serde")] use serde::{Deserialize, Serialize};
 
 // Krull65 features
 // -"trivially strong" design by Sami Perttu
@@ -12,7 +13,7 @@ use wrapping_arithmetic::wrappit;
 
 /// Krull65 non-cryptographic RNG. 64-bit output, 320-bit footprint.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Krull65 {
     /// LCG A state, low 64 bits.
     a0: u64,
@@ -26,75 +27,83 @@ pub struct Krull65 {
     c1: u64,
 }
 
-// As recommended, this Debug implementation does not expose internal state.
-impl core::fmt::Debug for Krull65 {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "Krull65 {{}}")
-    }
-}
-
-#[inline] fn origin_a0() -> u64 {
+#[inline]
+fn origin_a0() -> u64 {
     0
 }
 
-#[inline] fn origin_a_128() -> u128 {
+#[inline]
+fn origin_a_128() -> u128 {
     origin_a0() as u128
 }
 
-#[inline] fn origin_b0() -> u64 {
+#[inline]
+fn origin_b0() -> u64 {
     1
 }
 
-#[inline] fn origin_b_128() -> u128 {
+#[inline]
+fn origin_b_128() -> u128 {
     origin_b0() as u128
 }
 
 impl Krull65 {
-
-    #[inline] fn multiplier_a(&self) -> u64 {
+    #[inline]
+    fn multiplier_a(&self) -> u64 {
         super::LCG_M65_1 as u64
     }
 
-    #[inline] fn multiplier_a_128(&self) -> u128 {
+    #[inline]
+    fn multiplier_a_128(&self) -> u128 {
         super::LCG_M65_1
     }
 
-    #[inline] fn multiplier_b(&self) -> u64 {
+    #[inline]
+    fn multiplier_b(&self) -> u64 {
         super::LCG_M65_4 as u64
     }
 
-    #[inline] fn multiplier_b_128(&self) -> u128 {
+    #[inline]
+    fn multiplier_b_128(&self) -> u128 {
         super::LCG_M65_4
     }
 
-    #[inline] fn increment_a_128(&self) -> u128 {
+    #[inline]
+    fn increment_a_128(&self) -> u128 {
         ((self.c1 as u128) << 1) ^ super::LCG_M128_1
     }
 
-    #[inline] fn increment_b_128(&self) -> u128 {
+    #[inline]
+    fn increment_b_128(&self) -> u128 {
         ((self.c1 as u128) << 1) ^ 1
     }
 
-    #[inline] fn a_128(&self) -> u128 {
+    #[inline]
+    fn a_128(&self) -> u128 {
         self.a0 as u128 | ((self.a1 as u128) << 64)
     }
 
-    #[inline] fn set_a_128(&mut self, a: u128) {
+    #[inline]
+    fn set_a_128(&mut self, a: u128) {
         self.a0 = a as u64;
         self.a1 = (a >> 64) as u64;
     }
 
-    #[inline] fn b_128(&self) -> u128 {
+    #[inline]
+    fn b_128(&self) -> u128 {
         self.b0 as u128 | ((self.b1 as u128) << 64)
     }
 
-    #[inline] fn set_b_128(&mut self, b: u128) {
+    #[inline]
+    fn set_b_128(&mut self, b: u128) {
         self.b0 = b as u64;
         self.b1 = (b >> 64) as u64;
     }
 
-    /// Advances to the next state.
-    #[wrappit] #[inline] fn step(&mut self) {
+    /// Generates the next 64-bit random number.
+    #[wrappit]
+    #[inline]
+    pub fn step(&mut self) -> u64 {
         // We can get a widening 64-to-128-bit multiply by casting the arguments from 64 bits.
         // 65-bit multiplies are ~0.5 ns faster here than 128-bit.
         // We also add the increment in 128-bit to get the carry for free.
@@ -104,10 +113,19 @@ impl Krull65 {
         let b = (self.b0 as u128) * self.multiplier_b() as u128 + self.increment_b_128();
         self.b1 = ((b >> 64) as u64) + self.b1 * self.multiplier_b() + self.b0;
         self.b0 = b as u64;
+        self.get()
+    }
+
+    /// Generates the next 128-bit random number.
+    #[inline]
+    pub fn step_128(&mut self) -> u128 {
+        self.step() as u128 | ((self.step() as u128) << 64)
     }
 
     /// Returns the current 64-bit output.
-    #[wrappit] #[inline] fn get(&self) -> u64 {
+    #[wrappit]
+    #[inline]
+    pub fn get(&self) -> u64 {
         // Krull65 algorithm consists of two 128-bit LCGs advancing in synchrony.
         // The LCGs A and B realize two cycles of length 2**128,
         // with constants determined from high 64 bits of C, the stream.
@@ -155,17 +173,17 @@ impl Krull65 {
         x ^ (x >> 32)
     }
 
-    /// Generates the next 64-bit random number.
-    #[inline]
-    pub fn next(&mut self) -> u64 {
-        self.step();
-        self.get()
-    }
-
     /// Creates a new Krull65 RNG.
     /// Stream and position are set to 0.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Krull65 { a0: origin_a0(), a1: 0, b0: origin_b0(), b1: 0, c1: 0 }
+        Krull65 {
+            a0: origin_a0(),
+            a1: 0,
+            b0: origin_b0(),
+            b1: 0,
+            c1: 0,
+        }
     }
 
     /// Creates a new Krull65 RNG from a 32-bit seed.
@@ -210,14 +228,29 @@ impl Krull65 {
     /// Jumps forward (if steps > 0) or backward (if steps < 0) or does nothing (if steps = 0).
     /// The stream wraps around, so signed steps can be interpreted as unsigned.
     pub fn jump(&mut self, steps: i128) {
-        self.set_a_128(crate::lcg::get_state(self.multiplier_a_128(), self.increment_a_128(), self.a_128(), steps as u128));
-        self.set_b_128(crate::lcg::get_state(self.multiplier_b_128(), self.increment_b_128(), self.b_128(), steps as u128));
+        self.set_a_128(crate::lcg::get_state(
+            self.multiplier_a_128(),
+            self.increment_a_128(),
+            self.a_128(),
+            steps as u128,
+        ));
+        self.set_b_128(crate::lcg::get_state(
+            self.multiplier_b_128(),
+            self.increment_b_128(),
+            self.b_128(),
+            steps as u128,
+        ));
     }
 
     /// Returns current position in stream. The full state of the generator is (stream, position).
     pub fn position(&self) -> u128 {
         // Position is encoded in A.
-        super::lcg::get_iterations(self.multiplier_a_128(), self.increment_a_128(), origin_a_128(), self.a_128())
+        super::lcg::get_iterations(
+            self.multiplier_a_128(),
+            self.increment_a_128(),
+            origin_a_128(),
+            self.a_128(),
+        )
     }
 
     /// Sets position in stream.
@@ -239,7 +272,12 @@ impl Krull65 {
     #[inline]
     pub fn stream(&self) -> u128 {
         let a_n = self.position();
-        let b_n = super::lcg::get_iterations(self.multiplier_b_128(), self.increment_b_128(), origin_b_128(), self.b_128());
+        let b_n = super::lcg::get_iterations(
+            self.multiplier_b_128(),
+            self.increment_b_128(),
+            origin_b_128(),
+            self.b_128(),
+        );
         // Low bits of stream are encoded as the phase difference (B - A).
         let delta = b_n.wrapping_sub(a_n) as u64;
         (((delta ^ self.c1) as u128) << 64) | (delta as u128)
@@ -250,35 +288,41 @@ impl Krull65 {
         // This transformation enhances diversity of nearby streams.
         self.c1 = (stream ^ (stream >> 64)) as u64;
         self.reset();
-        self.set_b_128(crate::lcg::get_state(self.multiplier_b_128(), self.increment_b_128(), origin_b_128(), (stream as u64) as u128));
+        self.set_b_128(crate::lcg::get_state(
+            self.multiplier_b_128(),
+            self.increment_b_128(),
+            origin_b_128(),
+            (stream as u64) as u128,
+        ));
     }
 }
 
-use super::{RngCore, Error, SeedableRng};
+use super::{Error, RngCore, SeedableRng};
 
 impl RngCore for Krull65 {
     fn next_u32(&mut self) -> u32 {
-        self.next() as u32
+        self.step() as u32
     }
-     
+
     fn next_u64(&mut self) -> u64 {
-        self.next()
+        self.step()
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         let bytes = dest.len();
         let mut i = 0;
         while i < bytes {
-            let x = self.next();
+            let x = self.step();
             let j = bytes.min(i + 8);
             // Always use Little-Endian.
-            dest[i .. j].copy_from_slice(&x.to_le_bytes()[0 .. (j - i)]);
+            dest[i..j].copy_from_slice(&x.to_le_bytes()[0..(j - i)]);
             i = j;
         }
     }
 
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-        Ok(self.fill_bytes(dest))
+        self.fill_bytes(dest);
+        Ok(())
     }
 }
 
@@ -292,20 +336,27 @@ impl SeedableRng for Krull65 {
     /// All seeds work equally well.
     fn from_seed(seed: Self::Seed) -> Self {
         // Always use Little-Endian.
-        Krull65::from_192(u128::from_le_bytes(seed[0 .. 16].try_into().unwrap()), u64::from_le_bytes(seed[16 .. 24].try_into().unwrap()))
+        Krull65::from_192(
+            u128::from_le_bytes(seed[0..16].try_into().unwrap()),
+            u64::from_le_bytes(seed[16..24].try_into().unwrap()),
+        )
     }
 }
 
-#[cfg(test)] mod tests {
-    use super::*;
+#[cfg(test)]
+mod tests {
     use super::super::*;
+    use super::*;
 
-    #[test] pub fn run_tests() {
-
+    #[test]
+    pub fn run_tests() {
         let mut r: u128 = 0;
-        let mut rnd = || -> u128 { r = r.wrapping_mul(LCG_M128_1).wrapping_add(0xffff); r };
+        let mut rnd = || -> u128 {
+            r = r.wrapping_mul(LCG_M128_1).wrapping_add(0xffff);
+            r
+        };
 
-        for _ in 0 .. 1<<12 {
+        for _ in 0..1 << 12 {
             let seed = rnd();
             let mut krull1 = Krull65::new();
             assert_eq!(0, krull1.stream());
@@ -316,7 +367,7 @@ impl SeedableRng for Krull65 {
             let mut krull2 = Krull65::from_128(seed);
             assert_eq!(seed, krull2.stream());
             assert_eq!(0, krull2.position());
-        
+
             let pos2 = rnd();
             let pos1 = pos2 & rnd();
             krull1.set_position(pos1);
@@ -326,15 +377,18 @@ impl SeedableRng for Krull65 {
             krull1.jump((pos2 - pos1) as i128);
             assert_eq!(pos2, krull1.position());
             assert_eq!(krull1.next_u64(), krull2.next_u64());
-            krull1.jump(-1);
+            assert_eq!(krull1.step_128(), krull2.step_128());
+            krull1.jump(-3);
             assert_eq!(pos2, krull1.position());
-            krull2.jump(-1);
+            krull2.jump(-3);
             assert_eq!(pos2, krull2.position());
             krull1.jump(-((pos2 - pos1) as i128));
             assert_eq!(pos1, krull1.position());
 
             let n = 1 + (rnd() & 0x3ff);
-            for _ in 0 .. n { krull1.next_u64(); }
+            for _ in 0..n {
+                krull1.next_u64();
+            }
             assert_eq!(pos1 + n, krull1.position());
 
             assert_eq!(seed, krull1.stream());
@@ -344,13 +398,16 @@ impl SeedableRng for Krull65 {
             let mut buffer2 = [0u8; 0x80];
             krull1.reset();
             assert_eq!(0, krull1.position());
-            krull1.fill_bytes(&mut buffer1[0 .. bytes as usize]);
+            krull1.fill_bytes(&mut buffer1[0..bytes as usize]);
             krull2.reset();
-            for i in 0 .. 0x10 {
+            for i in 0..0x10 {
                 let x = krull2.next_u64();
-                buffer2[(i << 3) .. ((i + 1) << 3)].copy_from_slice(&x.to_le_bytes());
+                buffer2[(i << 3)..((i + 1) << 3)].copy_from_slice(&x.to_le_bytes());
             }
-            assert!(buffer1[0 .. bytes as usize].iter().zip(buffer2[0 .. bytes as usize].iter()).all(|(x, y)| x == y));
+            assert!(buffer1[0..bytes as usize]
+                .iter()
+                .zip(buffer2[0..bytes as usize].iter())
+                .all(|(x, y)| x == y));
         }
     }
 }

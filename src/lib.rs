@@ -1,6 +1,8 @@
-pub mod lcg;
+#![no_std]
+
 pub mod krull64;
 pub mod krull65;
+pub mod lcg;
 
 pub use krull64::*;
 pub use krull65::*;

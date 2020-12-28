@@ -1,11 +1,16 @@
+use core::ops::{Add, BitAnd, BitOr, BitXor, Mul, Not, Shl, Shr, Sub};
 use wrapping_arithmetic::wrappit;
-use core::ops::{Add, Sub, Mul, Not, BitAnd, BitOr, BitXor, Shl, Shr};
 
 // This module contains utility functions for working with
 // LCGs (linear congruential generators).
 
 // Define an ad hoc trait to make our functions generic.
-pub trait Int: Copy + Eq + PartialEq + Ord + PartialOrd
+pub trait Int:
+    Copy
+    + Eq
+    + PartialEq
+    + Ord
+    + PartialOrd
     + Add<Output = Self>
     + Sub<Output = Self>
     + Mul<Output = Self>
@@ -105,23 +110,36 @@ pub fn get_state<T: Int>(m: T, p: T, origin: T, iterations: T) -> T {
     state
 }
 
-#[cfg(test)] mod tests {
-    use super::*;
+#[cfg(test)]
+mod tests {
     use super::super::*;
+    use super::*;
 
-    #[test] pub fn run_tests() {
-
+    #[test]
+    pub fn run_tests() {
         let mut r: u128 = 0;
-        let mut rnd = || -> u128 { r = r.wrapping_mul(LCG_M128_1).wrapping_add(0xffff); r };
+        let mut rnd = || -> u128 {
+            r = r.wrapping_mul(LCG_M128_1).wrapping_add(0xffff);
+            r
+        };
 
-        for _ in 0 .. 1<<12 {
-
-            let m = match rnd() % 3 { 0 => LCG_M128_1, 1 => LCG_M128_2, _ => LCG_M128_3 };
+        for _ in 0..1 << 12 {
+            let m = match rnd() % 3 {
+                0 => LCG_M128_1,
+                1 => LCG_M128_2,
+                _ => LCG_M128_3,
+            };
             let p = rnd() | 1;
             let origin = rnd();
 
-            assert_eq!(origin.wrapping_mul(m).wrapping_add(p), get_state(m, p, origin, 1));
-            assert_eq!(1, get_iterations(m, p, origin, origin.wrapping_mul(m).wrapping_add(p)));
+            assert_eq!(
+                origin.wrapping_mul(m).wrapping_add(p),
+                get_state(m, p, origin, 1)
+            );
+            assert_eq!(
+                1,
+                get_iterations(m, p, origin, origin.wrapping_mul(m).wrapping_add(p))
+            );
 
             // Run some consistency tests.
             let state = rnd();

@@ -3,12 +3,12 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use rand_krull::*;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    let mut kr1 = Krull64::new();
-    c.bench_function("Krull64::next", move |b| b.iter(|| kr1.next()));
-    let mut kr2 = Krull64::new();
-    c.bench_function("Krull64::next_128", move |b| b.iter(|| kr2.next_128()));
-    let mut kr3 = Krull65::new();
-    c.bench_function("Krull65::next", move |b| b.iter(|| kr3.next()));
+    let mut krull1 = Krull64::new();
+    c.bench_function("Krull64::step", move |b| b.iter(|| krull1.step()));
+    let mut krull2 = Krull64::new();
+    c.bench_function("Krull64::step_slow", move |b| b.iter(|| krull2.step_slow()));
+    let mut krull3 = Krull65::new();
+    c.bench_function("Krull65::step", move |b| b.iter(|| krull3.step()));
 }
 
 criterion_group!(benches, criterion_benchmark);
