@@ -17,8 +17,6 @@ Krull64/65 are intended as non-cryptographic workhorse RNGs
 suitable for simulations and procedural content generation
 that are solid, easy to use, and have a full feature set.
 
-Krull64/65 will be frozen after a period of testing if no issues are found.
-
 ## Crate
 
 This crate depends on [rand_core](https://crates.io/crates/rand_core), which is

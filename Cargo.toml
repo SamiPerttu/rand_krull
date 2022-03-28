@@ -1,6 +1,6 @@
 [package]
 name = "rand_krull"
-version = "0.2.0"
+version = "1.0.0"
 authors = ["Sami Perttu <Sami.Perttu@gmail.com>"]
 edition = "2018"
 description = "Krull64/65 random number generators."
