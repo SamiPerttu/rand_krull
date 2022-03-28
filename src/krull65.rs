@@ -350,6 +350,29 @@ mod tests {
 
     #[test]
     pub fn run_tests() {
+        let krull65_expected: [u64; 16] = [
+            0xb452db3477d0f28c,
+            0x4b18143b734a1323,
+            0xd3bcfb9bc0490552,
+            0xeff12231bb834360,
+            0xe42f4a761df9af10,
+            0x406dfd26792bd055,
+            0xc9a5a47d267b062f,
+            0x820b92893554fee5,
+            0x5486526d00390100,
+            0x01e7fe5dadb6c4b6,
+            0x92321eb90e80990b,
+            0xdd0718b66afad71e,
+            0x802396acf22d0d0c,
+            0x2f1d038e51a0314d,
+            0x782203919d148d96,
+            0x9935a93e6a838e24,
+        ];
+        let mut krull65 = Krull65::from_64(0);
+        for x in krull65_expected {
+            assert_eq!(x, krull65.next_u64());
+        }
+
         let mut r: u128 = 0;
         let mut rnd = || -> u128 {
             r = r.wrapping_mul(LCG_M128_1).wrapping_add(0xffff);

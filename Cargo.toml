@@ -14,12 +14,12 @@ readme = "README.md"
 default = []
 
 [dependencies]
-rand_core = "0.6"
+rand_core = "0.6.3"
 wrapping_arithmetic = "0.1.0"
-serde = { version = "1.0", features = ["derive"], optional = true }
+serde = { version = "1.0.136", features = ["derive"], optional = true }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.3.5"
 
 [[bench]]
 name = "benchmark"
