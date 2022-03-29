@@ -3,7 +3,6 @@
 ## Sample with Confidence
 
 - High quality, non-cryptographic, medium-fast [RNGs](https://en.wikipedia.org/wiki/Random_number_generation).
-- Designed by Sebastiano Vigna (Krull64) / Sami Perttu (Krull65).
 - "Trivially strong" algorithms combining [LCGs](https://en.wikipedia.org/wiki/Linear_congruential_generator) with a strong output hash.
 - 64-bit output, 192-bit (Krull64) or 256-bit (Krull65) state.
 - 2\*\*64 (Krull64) or 2\*\*128 (Krull65) pairwise independent streams of period 2\*\*128.

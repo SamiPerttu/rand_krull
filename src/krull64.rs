@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use wrapping_arithmetic::wrappit;
 
 // Krull64 features
-// -"trivially strong" design by Sebastiano Vigna
+// -"trivially strong" design by Sami Perttu
 // -64-bit output, 192-bit state and footprint
 // -full 192-bit state space with no bad states and no bad seeds
 // -2**64 pairwise independent streams of length 2**128
