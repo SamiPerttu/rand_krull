@@ -6,7 +6,7 @@
 - "Trivially strong" algorithms combining [LCGs](https://en.wikipedia.org/wiki/Linear_congruential_generator) with a strong output hash.
 - 64-bit output, 192-bit (Krull64) or 256-bit (Krull65) state.
 - 2\*\*64 (Krull64) or 2\*\*128 (Krull65) pairwise independent streams of period 2\*\*128.
-- Streams are equidistributed with each 64-bit number appearing 2\*\*64 times.
+- Krull64 streams are equidistributed with each 64-bit number appearing 2\*\*64 times.
 - Full state space with no bad states and no bad seeds.
 - Random access inside streams.
 - No unsafe code and no `std` required.
